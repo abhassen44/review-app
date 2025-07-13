@@ -21,15 +21,53 @@ const Dashboard = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitch, setIsSwitch] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [searchTerm, setSearchTerm] = useState('');
 
+  const {toast} = useToast();
 
-  const {toast}=useToast()
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(messages.filter((message) => message._id !== messageId));
+  };
 
-  const handleDeleteMessage= (messageId:string ) =>{
-    setMessages(messages.filter((message)=>message._id!==messageId));
-  }
+  const toggleSortOrder = () => {
+    const newOrder = sortOrder === 'newest' ? 'oldest' : 'newest';
+    setSortOrder(newOrder);
+    sortMessages(messages, newOrder, selectedCategory, searchTerm);
+    toast({
+      title: 'Sort Order Changed',
+      description: `Showing ${newOrder} messages first`
+    });
+  };
 
-  const{data:session}=useSession()
+  const sortMessages = (msgs: Message[], order: string, category: string, search: string) => {
+    let filtered = [...msgs];
+    
+    // Apply category filter
+    if (category !== 'All') {
+      filtered = filtered.filter(msg => msg.category === category);
+    }
+
+    // Apply search filter
+    if (search) {
+      filtered = filtered.filter(msg =>
+        msg.content.toLowerCase().includes(search.toLowerCase()) ||
+        msg.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return order === 'newest' ? dateB - dateA : dateA - dateB;
+    });
+
+    setMessages(filtered);
+  };
+
+  const {data: session} = useSession();
 
   const form=useForm({
     resolver:zodResolver(AcceptmessageSchema)
